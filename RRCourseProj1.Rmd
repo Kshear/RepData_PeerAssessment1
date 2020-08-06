@@ -1,0 +1,117 @@
+---
+title: "RR Course Project 1"
+author: "KShear"
+date: "8/6/2020"
+output: html_document
+---
+## Data Prep
+
+This project starts by loading the provded activity data, checking the structure of the dataframe and then aggregates the step variable by date in preparation for the next step. 
+```{r, echo=TRUE}
+
+library(dplyr)
+library(lattice)
+
+#read in data file
+activity <-read.csv("activity.csv")
+#view str of data
+str(activity)
+#create variable for daily totals
+daily<- aggregate(steps ~ date, activity, sum)
+```
+
+## Histogram of the total number of steps taken each day
+
+
+```{r, echo=TRUE}
+#1. create histogram of daily step count
+hist(daily$steps, xlab="Daily Step Totals", main= "Histogram of Daily Steps", col= "coral")
+
+```
+
+## Mean and median number of steps taken each day
+```{r, echo= TRUE}
+#2. calculate mean
+mean(daily$steps)
+
+#3. calculate median
+median(daily$steps)
+```
+
+##Time series plot of the average number of steps taken based on raw data
+
+```{r, echo= TRUE}
+#4. time series plot of average number of steps taken
+    #calculate mean for intervals to generate plot
+IntAvg <-  aggregate(steps ~ interval, activity, mean, is.na=F) #change made here 12:29)
+    #check structure of new dataframe
+str(IntAvg)
+    #create plot using base
+DailyPat <- plot(x=IntAvg$interval, y=IntAvg$steps, type='l', xlab="Interval", ylab="Mean Steps", main="Mean Steps per 5-min Interval")
+```
+
+##The 5-minute interval that, on average, contains the maximum number of steps
+```{r, echo= TRUE}
+#5. The 5-minute interval that, on average, contains the maximum number of steps
+
+summary(IntAvg)
+#View(IntAvg) #can view to see what the largest number is
+max <- filter(IntAvg, steps >= 206) #set to filter to only the interval with the highest step avg
+print(max$interval) #prints the interval number with the highest step avg
+```
+
+##Code to describe and show a strategy for imputing missing data
+```{r, echo= TRUE}
+#6.Code to describe and show a strategy for imputing missing data
+
+    #Find mean steps per interval so we know what number to replace the NAs with median=0 so mean will be used
+
+    StepPerInt <- activity$steps #copy this row so that we can then impute into this vector
+    
+    IntAvg <-  aggregate(steps ~ interval, activity, mean)#aggregate the mean steps for each interval
+    MeanIntAvg <- mean(IntAvg$steps) #calculates the mean across all intervals (this is the number to impute)
+    
+    #Find number of missing values (does this change all the NAs to 0's??)
+    #NumNA <- sum(is.na(activity$steps))
+    #print(NumNA)
+
+  StepPerInt[which(is.na(StepPerInt))] <- 37.38 #this imputese the mean steps per interval for all NA values
+    
+  StepsNoNA <- StepPerInt #applies a more desciptive label
+    
+  activityIMP <- data.frame(activity, StepsNoNA) #creates new dataframe that includes the StepsNonNA data
+```
+## Histogram of the total number of steps taken each day after missing values are imputed
+```{r, echo= TRUE}
+#7. Histogram of the total number of steps taken each day after missing values are imputed
+    IMPdailyAvg <-  aggregate(StepsNoNA ~ date, activityIMP, mean)#aggregate the mean steps for each day
+    
+    hist(IMPdailyAvg$StepsNoNA) #generates the histogram for imputed data
+  ```
+##  Panel plot comparing the average number of steps taken per 5-minute interval across weekdays and weekends
+```{r, echo= TRUE}
+#8. Panel plot comparing the average number of steps taken per 5-minute interval across weekdays and weekends
+
+    library(lubridate)
+    
+    dow <- wday(activityIMP$date) ##genrates new value where number 1-7 represents Sunday - Saturday (weekends = 1 & 7)
+    weekend <- dow == (1 | 7) #generates a logical vector where "TRUE" is for weekend days
+    summary(weekend)
+    
+    activityIMPdow <- data.frame(activityIMP, dow, weekend) #creates dataframe that includes dow and weekend variables
+    
+    StepsWeekend <- filter(activityIMPdow, weekend == TRUE) #filters data to just weekend days
+    StepsWeek <- filter(activityIMPdow, weekend == FALSE) #filters data to just week days
+    
+    AvgWeekend <-  aggregate(StepsNoNA ~ interval, StepsWeekend, mean) #Calculates Avg steps per interval for weekends
+  #View(AvgWeekend)
+    AvgWeek <- aggregate(StepsNoNA ~ interval, StepsWeek, mean) #Calculates Avg steps per interval for weekdays
+ #generates plots   
+    par(mfcol = c(2,1), mar = c(2, 2, 2, 1), oma = c(0, 0, 2, 0)) #bottom, left, top, right
+    plot(AvgWeekend$interval, AvgWeekend$StepsNoNA, type = 'l', yaxs= "i", xlab="interval", ylab="# of steps", main="Weekends")
+    
+    plot(AvgWeek$interval, AvgWeek$StepsNoNA, type = 'l', yaxs = "i", xlab="interval", ylab="# of steps", main="Weekdays")
+    
+    mtext("Comparison of Average Steps per Interval on Weekends vs Weekdays", outer = T)
+```
+     
